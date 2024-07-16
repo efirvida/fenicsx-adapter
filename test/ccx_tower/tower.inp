@@ -1,0 +1,26 @@
+*include,input=tower.msh
+*include,input=point.nam
+
+*BOUNDARY
+NFIXED_SURFACE, 1,3
+
+*MATERIAL,NAME=steel
+*ELASTIC
+68.9E9,0.33
+*DENSITY
+2700
+*solid SECTION,ELSET=EVOLUME,MATERIAL=steel
+
+*STEP
+*STATIC
+*CLOAD
+LOAD_POINT, 1, 10.0
+
+*Node print, Nset=LOAD_POINT
+U
+
+*NODE FILE
+U, RF
+
+*end step
+
