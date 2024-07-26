@@ -1,0 +1,120 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#includeEtc "caseDicts/mesh/generation/snappyHexMeshDict.cfg"
+
+castellatedMesh        on;
+snap                   on;
+addLayers              on;
+
+geometry
+{
+    tower
+    {
+        type        triSurfaceMesh;
+        file        "tower.stl";
+    }    
+    refZone
+    {
+        type          searchableBox;
+        min         (-100 -50    0);
+        max         ( 100  50  180);
+    } 
+    waveZone
+    {
+        type        searchableBox;
+        min         (-300 -100   0);
+        max         ( 300  100  35);
+        
+    } 
+};
+
+
+// Settings for the castellatedMesh generation.
+castellatedMeshControls
+{
+    maxLocalCells              100000;
+    maxGlobalCells           20000000;
+    minRefinementCells              0;
+    maxLoadUnbalance             0.05;
+    nCellsBetweenLevels             4;
+    features
+    (
+        {
+            file        "tower.eMesh";
+            level                   4;
+        }        
+    );
+
+    refinementSurfaces
+    {
+        tower
+        {
+            level                    (3 3);
+        }
+    }
+
+    refinementRegions
+    {
+        refZone
+        {
+            mode        inside;
+            levels      ((1E15 3));
+        }        
+        waveZone
+        {
+            mode        inside;
+            levels      ((1E15 1));
+        }
+    }
+
+    resolveFeatureAngle                60;
+    locationInMesh             (33 33 33);
+    allowFreeStandingZoneFaces     false;
+}
+
+
+
+
+// Settings for the snapping.
+snapControls
+{
+    implicitFeatureSnap       off;
+    explicitFeatureSnap       on;
+    multiRegionFeatureSnap    on;
+}
+
+
+// Settings for the layer addition.
+addLayersControls
+{
+    layers
+    {
+        tower
+        {
+            nSurfaceLayers                       10;
+        }
+    }
+    relativeSizes                                on;
+    expansionRatio                             1.05;
+    thickness                                     1;
+    minThickness                                0.1;
+    featureAngle                                130;
+}
+
+mergeTolerance 1e-6;
+
+// ************************************************************************* //

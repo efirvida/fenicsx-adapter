@@ -18,5 +18,6 @@ runApplication -o checkMesh -constant
 # ------------#
 
 restore0Dir
-runApplication -o $(getApplication)
+decomposePar
+runParallel -o $(getApplication)
 find . -type d -regex '.*/[0-9]+\.[0-9]+'! -exec test -e "{}/cellDisplacement" \; -exec rm -rf {} +

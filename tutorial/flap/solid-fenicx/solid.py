@@ -1,24 +1,17 @@
 import os
-import glob
 
-import numpy as np
-import ufl
-from mpi4py import MPI
+# enforce 1 thread per core
+nthreads = 1
+os.environ["OMP_NUM_THREADS"] = str(nthreads)
+os.environ["OPENBLAS_NUM_THREADS"] = str(nthreads)
+os.environ["MKL_NUM_THREADS"] = str(nthreads)
 
 import dolfinx as dfx
-from dolfinx.mesh import create_rectangle, CellType
-from petsc4py import PETSc
-from dolfinx.fem.petsc import apply_lifting, assemble_matrix, set_bc
-
-from interface import Adapter
-
-
-class Material(NamedTuple):
-    name: str
-    E: PETSc.ScalarType
-    nu: PETSc.ScalarType
-    rho: PETSc.ScalarType
-
+import numpy as np
+import ufl
+from dolfinx.mesh import CellType, create_rectangle
+from fenicsxprecice import Adapter, DiscreteLinearProblem
+from mpi4py import MPI
 
 # --------- #
 # CONSTANTS #
@@ -33,11 +26,12 @@ os.chdir(CURRENT_FOLDER)
 
 WRITER = dfx.io.VTKFile(MPI_COMM, f"{RESULTS_DIR}/result.pvd", "w")
 
-
 WIDTH, HEIGHT = 0.1, 1
 NX, NY = 4, 26
 
-flap_material = Material("Solid properties", E=4e6, nu=0.3, rho=3000.0)
+E = 4000000.0
+NU = 0.3
+RHO = 3000.0
 
 BETA_ = 0.25
 GAMMA_ = 0.5
@@ -53,8 +47,6 @@ domain = create_rectangle(
     cell_type=CellType.quadrilateral,
 )
 dim = domain.topology.dim
-domain.topology.create_connectivity(dim - 1, dim)
-WRITER.write_mesh(domain)
 
 # -------------- #
 # Function Space #
@@ -67,55 +59,49 @@ u = dfx.fem.Function(V, name="Displacement")
 # ------------------- #
 # Boundary conditions #
 # ------------------- #
+tol = 1e-14
 
 
 def clamped_boundary(x):
-    return np.isclose(x[1], 0.0)
+    return abs(x[1]) < tol
 
 
 def neumann_boundary(x):
-    return np.logical_or(np.isclose(x[1], HEIGHT), np.isclose(np.abs(x[0]), WIDTH / 2))
+    """Determines whether a node is on the coupling boundary."""
+    return np.logical_or(
+        (np.abs(x[1] - HEIGHT) < tol), np.abs(np.abs(x[0]) - WIDTH / 2) < tol
+    )
 
 
 fixed_boundary = dfx.fem.locate_dofs_geometrical(V, clamped_boundary)
 coupling_boundary = dfx.mesh.locate_entities_boundary(domain, dim - 1, neumann_boundary)
-coupling_boundary_tags = dfx.mesh.meshtags(domain, dim - 1, np.sort(coupling_boundary), 1)
 
-with open(f"{RESULTS_DIR}/fixed_boundary.csv", "w") as p_file:
-    p_file.write("X,Y,Z\n")
-    np.savetxt(p_file, V.tabulate_dof_coordinates()[fixed_boundary], delimiter=",")
-
-bc = dfx.fem.dirichletbc(np.zeros((dim,)), fixed_boundary, V)
+bcs = [dfx.fem.dirichletbc(np.zeros((dim,)), fixed_boundary, V)]
 
 # ------------ #
 # PRECICE INIT #
 # ------------ #
-participant = Adapter(MPI_COMM, PARTICIPANT_CONFIG, domain, flap_material)
+participant = Adapter(MPI_COMM, PARTICIPANT_CONFIG, domain)
 participant.initialize(V, coupling_boundary)
-with open(f"{RESULTS_DIR}/interpolation_points.csv", "w") as p_file:
-    p_file.write("X,Y\n")
-    np.savetxt(p_file, participant.interface_coordinates, delimiter=",")
-
-dt = dfx.fem.Constant(domain, PETSc.ScalarType(participant.dt))
+dt = participant.dt
 
 # ------------------------ #
 # linear elastic equations #
 # ------------------------ #
+E = dfx.fem.Constant(domain, E)
+nu = dfx.fem.Constant(domain, NU)
+rho = dfx.fem.Constant(domain, RHO)
 
-E = dfx.fem.Constant(domain, flap_material.E)
-nu = dfx.fem.Constant(domain, flap_material.nu)
-rho = dfx.fem.Constant(domain, flap_material.rho)
-
-lmbda = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
-mu = E / (2.0 * (1.0 + nu))
+lmbda = E * nu / (1 + nu) / (1 - 2 * nu)
+mu = E / 2 / (1 + nu)
 
 
 def epsilon(v):
-    return 0.5 * (ufl.grad(v) + ufl.grad(v).T)
+    return ufl.sym(ufl.grad(v))
 
 
 def sigma(v):
-    return lmbda * ufl.div(v) * ufl.Identity(dim) + 2 * mu * epsilon(v)
+    return lmbda * ufl.tr(epsilon(v)) * ufl.Identity(dim) + 2 * mu * epsilon(v)
 
 
 # ------------------- #
@@ -135,8 +121,9 @@ gamma = dfx.fem.Constant(domain, GAMMA_)
 
 dx = ufl.Measure("dx", domain=domain)
 
-
-a = 1 / beta / dt**2 * (u - u_old - dt * v_old) + a_old * (1 - 1 / 2 / beta)
+a = (1 / (beta * dt**2)) * (u - u_old - dt * v_old) - (
+    (1 - 2 * beta) / (2 * beta)
+) * a_old
 a_expr = dfx.fem.Expression(a, V.element.interpolation_points())
 
 v = v_old + dt * ((1 - gamma) * a_old + gamma * a)
@@ -150,75 +137,53 @@ du = ufl.TrialFunction(V)
 
 
 def mass(u, u_):
-    return rho * ufl.dot(u, u_) * ufl.dx
+    return rho * ufl.dot(u, u_) * dx
 
 
 def stiffness(u, u_):
-    return ufl.inner(sigma(u), epsilon(u_)) * ufl.dx
+    return ufl.inner(sigma(u), epsilon(u_)) * dx
 
 
 Residual = mass(a, u_) + stiffness(u, u_)
 Residual_du = ufl.replace(Residual, {u: du})
+a_form = ufl.lhs(Residual_du)
+L_form = ufl.rhs(Residual_du)
 
 
-# ------------------ #
-# assemble and solve #
-# ------------------ #
-a = dfx.fem.form(ufl.lhs(Residual_du))-
+problem = DiscreteLinearProblem(
+    a=a_form, L=L_form, u=u, bcs=bcs, point_dofs=participant.interface_dof
+)
 
 
-
-A = assemble_matrix(a, bcs=[bc])
-A.assemble()
-
-b_func = dfx.fem.Function(V, name="Load")
-b_func.x.array[:] = 0
-b = b_func.vector
-with b.localForm() as b_local:
-    b_local.set(0)
-
-solver = PETSc.KSP().create(domain.comm)  # type: ignore
-solver.setFromOptions()
-solver.setType(PETSc.KSP.Type.CG)
-pc = solver.getPC()
-pc.setType(PETSc.PC.Type.GAMG)
-solver.setTolerances(rtol=1e-5, atol=1e-11, max_it=1000)
-solver.setOperators(A)
-
+# parameters for Time-Stepping
 t = 0.0
-uh = dfx.fem.Function(V, name="U")
+n = 0
 
 while participant.is_coupling_ongoing():
-    if participant.requires_writing_checkpoint():
+    if participant.requires_writing_checkpoint():  # write checkpoint
         participant.store_checkpoint(u_old, v_old, a_old, t)
 
-    read_data = participant.read_data(participant.dt)
+    read_data = participant.read_data(dt)
 
-    A = assemble_matrix(a, bcs=[bc])
-    A.assemble()
-
-    # apply incoming loads to the Function dof
-    b[participant.interface_dof] = read_data
-
-    b.assemble()
-    apply_lifting(b, [a], bcs=[[bc]])
-    b.ghostUpdate(addv=PETSc.InsertMode.ADD, mode=PETSc.ScatterMode.REVERSE)  # type: ignore
-    set_bc(b, [bc])
-
-    solver.solve(b, uh.vector)
-    uh.x.scatter_forward()
+    u = problem.solve(read_data)
 
     # Write new displacements to preCICE
-    participant.write_data(uh)
+    participant.write_data(u)
 
     # Call to advance coupling, also returns the optimum time step value
-    participant.advance(participant.dt)
+    participant.advance(dt)
 
+    # Either revert to old step if timestep has not converged or move to next timestep
     if participant.requires_reading_checkpoint():
-        u_cp, v_cp, a_cp, t_cp = participant.retrieve_checkpoint()
-        u_cp.vector.copy(u_old.vector)
-        v_cp.vector.copy(v_old.vector)
-        a_cp.vector.copy(a_old.vector)
+        (
+            u_cp,
+            v_cp,
+            a_cp,
+            t_cp,
+        ) = participant.retrieve_checkpoint()
+        u_old.vector.copy(u_cp.vector)
+        v_old.vector.copy(v_cp.vector)
+        a_old.vector.copy(a_cp.vector)
         t = t_cp
     else:
         v_new.interpolate(v_expr)
@@ -226,12 +191,12 @@ while participant.is_coupling_ongoing():
         u.vector.copy(u_old.vector)
         v_new.vector.copy(v_old.vector)
         a_new.vector.copy(a_old.vector)
-        t += dt.value
+        t += dt
 
     if participant.is_time_window_complete():
-        WRITER.write_function(uh, t)
-        WRITER.close()
-
+        if n % 10 == 0:
+            WRITER.write_function(u, t)
+            WRITER.close()
 
 WRITER.close()
 participant.finalize()

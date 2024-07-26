@@ -1,0 +1,19 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2312                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// https://www.nrel.gov/docs/fy20osti/76773.pdf
+UxMean                             10.59; // 10.59 [m/s]
+UyMean                                 0;
+UzMean                                 0;
+flowVelocity   ($UxMean $UyMean $UzMean); 
+turbulentNuTilda                 1.85e-4;
+turbulentK                          0.42;
+turbulentEpsilon                 1591.80;
+turbulentOmega                   42055.5;
+pressure                               0;
+
+// ************************************************************************* //
