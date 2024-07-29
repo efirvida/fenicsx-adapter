@@ -9,24 +9,24 @@ module load preCICE_OpenFOAM
 . $WM_PROJECT_DIR/bin/tools/RunFunctions
 
 
-# ./clean.sh
-# touch fluid.foam
+./clean.sh
+touch fluid.foam
 
 #-------------#
 #   Meshing   #
 #-------------#
-# runApplication blockMesh
-# runApplication surfaceFeatureExtract
-# runApplication snappyHexMesh -overwrite
-# runApplication renumberMesh -overwrite
-# runApplication checkMesh -constant
+runApplication blockMesh
+runApplication surfaceFeatureExtract
+runApplication snappyHexMesh -overwrite
+runApplication renumberMesh -overwrite
+runApplication checkMesh -constant
 
 # -------------#
 #   Running   #
 # -------------#
 
 runApplication -o decomposePar
-restore0Dir -processor
-runParallel -o setFields
-runParallel -o $(getApplication)
+restore0Dir    -processor
+runParallel    -o setFields
+runParallel    -o $(getApplication)
 runApplication -o reconstructPar -newTimes

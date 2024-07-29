@@ -62,8 +62,10 @@ ELEMENTS_ORDER = 1
 VECTOR_SPACE_DEGREE = 2
 
 
-def gmsh_tower(model: gmsh.model, name: str, h: float, d: float) -> gmsh.model:
-    model_name = name
+def gmsh_tower(h: float, d: float) -> gmsh.model:
+    gmsh.initialize()
+    gmsh.option.setNumber("General.Terminal", 0)
+    model_name = "Tower"
     gmsh.model.add(model_name)
 
     model = gmsh.model()
@@ -96,34 +98,13 @@ def gmsh_tower(model: gmsh.model, name: str, h: float, d: float) -> gmsh.model:
 
     model.mesh.setOrder(ELEMENTS_ORDER)
     model.mesh.generate(3)
-    gmsh.write("mesh.vtk")
-    gmsh.write("mesh.stl")
-
+    model.mesh.optimize()
+    gmsh.write("mesh.msh")
     return model
 
-
-def create_mesh(comm: MPI.Comm, model: gmsh.model, name: str, mode: str):
-    msh, ct, ft = io.gmshio.model_to_mesh(model, comm, rank=0)
-    msh.name = name
-    ct.name = f"{msh.name}_cells"
-    ft.name = f"{msh.name}_facets"
-    return (msh, ct, ft)
-
-
-gmsh.initialize()
-gmsh.option.setNumber("General.Terminal", 0)
-
-# Create model
-model_name = "Tower"
-model = gmsh.model()
-model = gmsh_tower(model=model, name=model_name, h=height, d=diameter)
-model.setCurrent(model_name)
-domain, cell_markers, facet_markers = create_mesh(
-    comm=MPI_COMM,
-    model=model,
-    name=model_name,
-    mode="w",
-)
+model = gmsh_tower(h=height, d=diameter)
+#domain, cell_markers, facet_markers = io.gmshio.model_to_mesh(model, MPI_COMM, rank=0)
+domain, cell_markers, facet_markers = io.gmshio.read_from_msh("mesh.msh", MPI_COMM, 0, gdim=3)
 
 # -------------- #
 # Function Space #
@@ -131,6 +112,10 @@ domain, cell_markers, facet_markers = create_mesh(
 dim = domain.geometry.dim
 V = fem.functionspace(domain, ("Lagrange", VECTOR_SPACE_DEGREE, (dim,)))
 u = fem.Function(V, name="Displacement")
+
+bs = V.dofmap.index_map_bs
+num_dofs_local = V.dofmap.index_map.size_local
+print(f"Rank {domain.comm.rank}, Block size {bs} Num local dofs {num_dofs_local*bs}")
 
 # --------------------#
 # Boundary conditions #
