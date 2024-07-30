@@ -21,7 +21,7 @@ os.chdir(CURRENT_FOLDER)
 WRITER = dfx.io.VTKFile(MPI_COMM, f"{RESULTS_DIR}/result.pvd", "w")
 
 WIDTH, HEIGHT = 0.1, 1
-NX, NY = 4, 26
+NX, NY = 2, 15*8
 
 E = 4000000.0
 NU = 0.3
