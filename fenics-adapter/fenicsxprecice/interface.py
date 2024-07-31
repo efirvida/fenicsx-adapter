@@ -1,12 +1,13 @@
-import precice
-import os
 import json
-import sys
-import numpy as np
-import dolfinx as dfx
 import logging
-from turbine.materials import Material
+import os
+import sys
 from typing import NamedTuple
+
+import dolfinx as dfx
+import numpy as np
+import precice
+from turbine.materials import Material
 
 logger = logging.getLogger("precice")
 

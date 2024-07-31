@@ -2,22 +2,22 @@ from __future__ import annotations
 
 import typing
 
-from petsc4py import PETSc
-
 import numpy as np
-
 import ufl
-from dolfinx.fem.petsc import (
-    assemble_vector,
-    assemble_matrix_mat,
-    set_bc,
-    apply_lifting,
-    LinearProblem,
-)
 from dolfinx.fem.bcs import DirichletBC
 from dolfinx.fem.function import Function as _Function
+from dolfinx.fem.petsc import (
+    LinearProblem,
+    NonlinearProblem,
+    apply_lifting,
+    assemble_matrix_mat,
+    assemble_vector,
+    set_bc,
+)
+from dolfinx.nls.petsc import NewtonSolver
+from mpi4py import MPI
 from numpy.typing import NDArray
-
+from petsc4py import PETSc
 
 Dofs = NDArray[np.int32]
 DofsValues = NDArray[np.float64]
@@ -40,9 +40,7 @@ class DiscreteLinearProblem(LinearProblem):
                 point_dofs = np.array([point_dofs], dtype="int32")
         self._point_dofs = point_dofs
 
-        super().__init__(
-            a, L, bcs, u, petsc_options, form_compiler_options, jit_options
-        )
+        super().__init__(a, L, bcs, u, petsc_options, form_compiler_options, jit_options)
 
     def solve(self, values: typing.Optional[DofsValues] = None):
         """Solve the problem."""
@@ -73,3 +71,33 @@ class DiscreteLinearProblem(LinearProblem):
         self.u.x.scatter_forward()
 
         return self.u
+
+# TODO: Newton solver for non-linear problems
+class DiscreteNewtonSolver(NewtonSolver):
+    def __init__(
+        self,
+        comm: MPI.Intracomm,
+        problem: NonlinearProblem,
+        point_dofs: typing.Optional[dict] = None,
+    ):
+        """A Newton solver for non-linear problems."""
+        if point_dofs is not None:
+            if not isinstance(type(point_dofs), np.ndarray):
+                point_dofs = np.array([point_dofs], dtype="int32")
+        self._point_dofs = point_dofs
+
+        super().__init__(comm, problem)
+
+    def solve(self, u: _Function, values: typing.Optional[DofsValues] = None):
+        """Solve non-linear problem into function u. Returns the number
+        of iterations and if the solver converged."""
+
+        if self._point_dofs is not None and values is not None:
+            # apply load in dofs
+            self._b[self._point_dofs] = values
+            self._b.assemble()
+
+        assemble_vector(self._b, self._L)
+        n, converged = super().solve(u.x.petsc_vec)
+        u.x.scatter_forward()
+        return n, converged
