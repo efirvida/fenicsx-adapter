@@ -99,12 +99,11 @@ def gmsh_tower(h: float, d: float) -> gmsh.model:
     model.mesh.setOrder(ELEMENTS_ORDER)
     model.mesh.generate(3)
     model.mesh.optimize()
-    gmsh.write("mesh.msh")
+    gmsh.write("mesh.vtk")
     return model
 
 model = gmsh_tower(h=height, d=diameter)
-#domain, cell_markers, facet_markers = io.gmshio.model_to_mesh(model, MPI_COMM, rank=0)
-domain, cell_markers, facet_markers = io.gmshio.read_from_msh("mesh.msh", MPI_COMM, 0, gdim=3)
+domain, cell_markers, facet_markers = io.gmshio.model_to_mesh(model, MPI_COMM, rank=0)
 
 # -------------- #
 # Function Space #
