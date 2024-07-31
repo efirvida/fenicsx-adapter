@@ -1,0 +1,9 @@
+{
+  "participant": "Solid",
+  "precice_config": "../precice-config.xml",
+  "interface": {
+      "mesh": "Solid-Mesh",
+      "write_data": "Heat-Flux",
+      "read_data": "Temperature"
+    }
+}
