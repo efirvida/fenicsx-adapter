@@ -22,13 +22,13 @@ os.chdir(CURRENT_FOLDER)
 WRITER = io.VTKFile(MPI_COMM, f"{RESULTS_DIR}/result.pvd", "w")
 
 
-# Define temporal parameters
-t = 0  # Start time
-T = 1.0  # Final time
-num_steps = 50
-dt = T / num_steps  # time step size
+alpha = 1  # m^2/s, https://en.wikipedia.org/wiki/Thermal_diffusivity
+k     = 100  # kg * m / s^3 / K, https://en.wikipedia.org/wiki/Thermal_conductivity
+u_D   = 310
+# ------- #
+# MESHING #
+# ------- #
 
-# Define mesh
 nx = 100
 ny = 25
 nz = 1
@@ -46,14 +46,21 @@ domain = create_box(
 )
 dim = domain.topology.dim
 V = fem.functionspace(domain, ("Lagrange", 2))
+V_g = fem.functionspace(domain, ("Lagrange", 2))
+V_flux_y = V_g.sub(1)
 
-u_n = fem.Function(V)
-u_n.name = "u_n"
-
+u_n = fem.Function(V, name="T")
+u_D_Function = fem.Function(V) 
 
 # ------------------- #
 # Boundary conditions #
 # ------------------- #
+u_D = fem.Constant(domain, u_D)
+k = fem.Constant(domain, k)
+alpha = fem.Constant(domain, alpha)
+u_n.interpolate(u_D)
+
+
 tol = 1e-14
 
 
@@ -78,42 +85,17 @@ participant = Adapter(MPI_COMM, PARTICIPANT_CONFIG, domain)
 participant.initialize(V, coupling_boundary)
 np.savetxt("dofs.txt", participant.interface_coordinates, delimiter=",", header="x,y,z")
 dt = participant.dt
-
-
-
-
-
-
-# Create boundary condition
-fdim = domain.topology.dim - 1
-boundary_facets = locate_entities_boundary(
-    domain, fdim, lambda x: np.full(x.shape[1], True, dtype=bool))
-bc = fem.dirichletbc(PETSc.ScalarType(0), fem.locate_dofs_topological(V, fdim, boundary_facets), V)
-
 WRITER.write_mesh(domain)
 
-# Define solution variable, and interpolate initial solution for visualization in Paraview
-uh = fem.Function(V)
-uh.name = "uh"
-uh.interpolate(initial_condition)
-WRITER.write_function(uh, t)
-
+# -------------------------- #
+# Define variational problem #
+# -------------------------- #
 u, v = ufl.TrialFunction(V), ufl.TestFunction(V)
 f = fem.Constant(domain, PETSc.ScalarType(0))
-a = u * v * ufl.dx + dt * ufl.dot(ufl.grad(u), ufl.grad(v)) * ufl.dx
-L = (u_n + dt * f) * v * ufl.dx
+F = u * v / dt * ufl.dx + alpha * ufl.dot(ufl.grad(u), ufl.grad(v)) * ufl.dx - u_n * v / dt * ufl.dx
+a, L = ufl.lhs(F), ufl.rhs(F)
 
-bilinear_form = fem.form(a)
-linear_form = fem.form(L)
-
-A = assemble_matrix(bilinear_form, bcs=[bc])
-A.assemble()
-b = create_vector(linear_form)
-
-solver = PETSc.KSP().create(domain.comm)
-solver.setOperators(A)
-solver.setType(PETSc.KSP.Type.PREONLY)
-solver.getPC().setType(PETSc.PC.Type.LU)
+t = 0
 
 for i in range(num_steps):
     t += dt
