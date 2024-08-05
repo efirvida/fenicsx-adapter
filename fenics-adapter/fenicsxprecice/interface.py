@@ -2,12 +2,12 @@ import json
 import logging
 import os
 import sys
-from typing import NamedTuple
+from typing import NamedTuple, List
 
 import dolfinx as dfx
+import copy
 import numpy as np
 import precice
-from turbine.materials import Material
 
 logger = logging.getLogger("precice")
 
@@ -106,34 +106,19 @@ class Config:
 class SolverState:
     """Stores the state of the solver, including displacement, velocity, acceleration, and time."""
 
-    def __init__(self, u, v, a, t):
-        """Initialize the SolverState object.
-
-        Parameters
-        ----------
-        u : dfx.fem.Function
-            Displacement function.
-        v : dfx.fem.Function
-            Velocity function.
-        a : dfx.fem.Function
-            Acceleration function.
-        t : float
-            Time.
-        """
-        self.u = u
-        self.v = v
-        self.a = a
-        self.t = t
+    def __init__(self, states):
+        """Initialize the SolverState object."""
+        states_cp = []
+        for state in states:
+            if isinstance(state, dfx.fem.Function):
+                states_cp.append(state.copy())
+            else:
+                states_cp.append(copy.deepcopy(state))
+        self.__state = states_cp
 
     def get_state(self):
-        """Returns the state of the solver.
-
-        Returns
-        -------
-        tuple
-            A tuple containing displacement, velocity, acceleration, and time.
-        """
-        return self.u, self.v, self.a, self.t
+        """Returns the state of the solver."""
+        return self.__state
 
 
 class Adapter:
@@ -346,21 +331,9 @@ class Adapter:
         write_data = write_function.vector[self.interface_dof]
         self._interface.write_data(mesh_name, write_data_name, self._precice_vertex_ids, write_data)
 
-    def store_checkpoint(self, u, v, a, t):
-        """Stores the current state as a checkpoint.
-
-        Parameters
-        ----------
-        u : dfx.fem.Function
-            Displacement function.
-        v : dfx.fem.Function
-            Velocity function.
-        a : dfx.fem.Function
-            Acceleration function.
-        t : float
-            Time.
-        """
-        self._checkpoint = SolverState(u.copy(), v.copy(), a.copy(), t)
+    def store_checkpoint(self, states: List):
+        """Stores the current state as a checkpoint."""
+        self._checkpoint = SolverState(states)
 
     def retrieve_checkpoint(self):
         """Retrieves the stored checkpoint state.
