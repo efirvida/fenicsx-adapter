@@ -1,9 +1,0 @@
-{
-  "precice_config": "../precice-config.xml",
-  "participant": "Solid",
-  "interface": {
-      "mesh": "Solid-Mesh",
-      "write_data": "Displacement",
-      "read_data": "Force"
-    }
-}

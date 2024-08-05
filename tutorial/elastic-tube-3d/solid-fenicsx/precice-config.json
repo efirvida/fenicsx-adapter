@@ -1,9 +1,0 @@
-{
-  "participant": "Solid",
-  "precice_config": "../precice-config.xml",
-  "interface": {
-      "mesh": "Solid-Mesh",
-      "write_data": "DisplacementDelta",
-      "read_data": "Force"
-    }
-}
