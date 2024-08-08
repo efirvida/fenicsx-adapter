@@ -163,7 +163,7 @@ t = 0.0
 
 while participant.is_coupling_ongoing():
     if participant.requires_writing_checkpoint():  # write checkpoint
-        participant.store_checkpoint(u_old, v_old, a_old, t)
+        participant.store_checkpoint((u_old, v_old, a_old, t))
 
     read_data = participant.read_data(dt)
 
