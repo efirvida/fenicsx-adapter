@@ -124,13 +124,11 @@ class SolverState:
 class Adapter:
     """Adapter for coupling FEniCS with preCICE."""
 
-    def __init__(self, mpi_comm, config_path: str, mesh) -> None:
+    def __init__(self, config_path: str, mesh) -> None:
         """Initialize the Adapter object.
 
         Parameters
         ----------
-        mpi_comm : MPI.Comm
-            MPI communicator.
         config_path : str
             Path to the configuration file.
         mesh : dfx.mesh.Mesh
@@ -138,7 +136,7 @@ class Adapter:
         """
         self._config = Config(config_path)
 
-        self._comm = mpi_comm
+        self._comm = mesh.comm
         self._domain = mesh
         self._topology = self._domain.topology
         self._checkpoint = None
