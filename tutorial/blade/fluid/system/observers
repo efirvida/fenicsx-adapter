@@ -1,0 +1,134 @@
+P0
+{
+    position (-0.1 0 0.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+P1
+{
+    position (-0.1 0 1);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+P2
+{
+    position (-0.1 0 1.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+P3
+{
+    position (-0.1 0 2);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+P4
+{
+    position (-0.1 0 2.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+P5
+{
+    position (-0.1 0 3);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+P6
+{
+    position (-0.1 0 3.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+P7
+{
+    position (-0.1 0 4);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+P8
+{
+    position (-0.1 0 4.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+P9
+{
+    position (-0.1 0 5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+P10
+{
+    position (-0.1 0 5.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+
+N0
+{
+    position (0.1 0 0.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+N1
+{
+    position (0.1 0 1);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+N2
+{
+    position (0.1 0 1.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+N3
+{
+    position (0.1 0 2);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+N4
+{
+    position (0.1 0 2.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+N5
+{
+    position (0.1 0 3);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+N6
+{
+    position (0.1 0 3.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+N7
+{
+    position (0.1 0 4);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+N8
+{
+    position (0.1 0 4.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+N9
+{
+    position (0.1 0 5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+N10
+{
+    position (0.1 0 5.5);
+    pRef 2e-05;
+    fftFreq 1024;
+}
+

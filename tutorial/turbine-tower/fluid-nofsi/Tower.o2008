@@ -1,0 +1,9 @@
+Running blockMesh on /nfs/home/user06/doctorado/fluid
+Running surfaceFeatureExtract on /nfs/home/user06/doctorado/fluid
+Running snappyHexMesh on /nfs/home/user06/doctorado/fluid
+Running renumberMesh on /nfs/home/user06/doctorado/fluid
+Running checkMesh on /nfs/home/user06/doctorado/fluid
+Running decomposePar on /nfs/home/user06/doctorado/fluid
+Restore 0/ from 0.orig/  [processor directories]
+Running setFields (80 processes) on /nfs/home/user06/doctorado/fluid 
+Running interFoam (80 processes) on /nfs/home/user06/doctorado/fluid 

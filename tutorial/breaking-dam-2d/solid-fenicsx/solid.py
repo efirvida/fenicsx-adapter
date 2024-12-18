@@ -21,7 +21,7 @@ os.chdir(CURRENT_FOLDER)
 WRITER = dfx.io.VTKFile(MPI_COMM, f"{RESULTS_DIR}/result.pvd", "w")
 
 WIDTH, HEIGHT = 0.1, 1
-NX, NY = 2, 15*8
+NX, NY = 3, 50
 
 E = 40000000.0
 NU = 0.0
@@ -63,9 +63,7 @@ def clamped_boundary(x):
 
 def neumann_boundary(x):
     """Determines whether a node is on the coupling boundary."""
-    return np.logical_or(
-        (np.abs(x[1] - HEIGHT) < tol), np.abs(np.abs(x[0]) - WIDTH / 2) < tol
-    )
+    return np.logical_or((np.abs(x[1] - HEIGHT) < tol), np.abs(np.abs(x[0]) - WIDTH / 2) < tol)
 
 
 fixed_boundary = dfx.fem.locate_dofs_geometrical(V, clamped_boundary)
@@ -76,7 +74,7 @@ bcs = [dfx.fem.dirichletbc(np.zeros((dim,)), fixed_boundary, V)]
 # ------------ #
 # PRECICE INIT #
 # ------------ #
-participant = Adapter(MPI_COMM, PARTICIPANT_CONFIG, domain)
+participant = Adapter(PARTICIPANT_CONFIG, domain)
 participant.initialize(V, coupling_boundary)
 dt = participant.dt
 
@@ -116,9 +114,7 @@ gamma = dfx.fem.Constant(domain, GAMMA_)
 
 dx = ufl.Measure("dx", domain=domain)
 
-a = (1 / (beta * dt**2)) * (u - u_old - dt * v_old) - (
-    (1 - 2 * beta) / (2 * beta)
-) * a_old
+a = (1 / (beta * dt**2)) * (u - u_old - dt * v_old) - ((1 - 2 * beta) / (2 * beta)) * a_old
 a_expr = dfx.fem.Expression(a, V.element.interpolation_points())
 
 v = v_old + dt * ((1 - gamma) * a_old + gamma * a)

@@ -6,6 +6,7 @@ import ufl
 from dolfinx.mesh import CellType, create_rectangle
 from fenicsxprecice import Adapter, DiscreteLinearProblem
 from mpi4py import MPI
+from dolfinx.graph import partitioner_scotch
 
 # --------- #
 # CONSTANTS #
@@ -21,7 +22,7 @@ os.chdir(CURRENT_FOLDER)
 WRITER = dfx.io.VTKFile(MPI_COMM, f"{RESULTS_DIR}/result.pvd", "w")
 
 WIDTH, HEIGHT = 0.1, 1
-NX, NY = 2, 15*8
+NX, NY = 4, 26
 
 E = 4000000.0
 NU = 0.3
@@ -33,12 +34,16 @@ GAMMA_ = 0.5
 # ------- #
 # MESHING #
 # ------- #
+partitioner = dfx.mesh.create_cell_partitioner(
+    part=partitioner_scotch(), ghost_mode=dfx.mesh.GhostMode.shared_facet
+)
 
 domain = create_rectangle(
     MPI_COMM,
     [np.array([-WIDTH / 2, 0]), np.array([WIDTH / 2, HEIGHT])],
     [NX, NY],
     cell_type=CellType.quadrilateral,
+    partitioner=partitioner,
 )
 dim = domain.topology.dim
 
@@ -50,6 +55,10 @@ shape = (dim,)
 V = dfx.fem.functionspace(domain, ("P", degree, shape))
 u = dfx.fem.Function(V, name="Displacement")
 f = dfx.fem.Function(V, name="Force")
+
+bs = V.dofmap.index_map_bs
+num_dofs_local = V.dofmap.index_map.size_local
+print(f"Rank {domain.comm.rank}, Block size {bs} Num local dofs {num_dofs_local*bs}")
 
 # ------------------- #
 # Boundary conditions #
@@ -63,9 +72,7 @@ def clamped_boundary(x):
 
 def neumann_boundary(x):
     """Determines whether a node is on the coupling boundary."""
-    return np.logical_or(
-        (np.abs(x[1] - HEIGHT) < tol), np.abs(np.abs(x[0]) - WIDTH / 2) < tol
-    )
+    return np.logical_or((np.abs(x[1] - HEIGHT) < tol), np.abs(np.abs(x[0]) - WIDTH / 2) < tol)
 
 
 fixed_boundary = dfx.fem.locate_dofs_geometrical(V, clamped_boundary)
@@ -73,10 +80,11 @@ coupling_boundary = dfx.mesh.locate_entities_boundary(domain, dim - 1, neumann_b
 
 bcs = [dfx.fem.dirichletbc(np.zeros((dim,)), fixed_boundary, V)]
 
+
 # ------------ #
 # PRECICE INIT #
 # ------------ #
-participant = Adapter(MPI_COMM, PARTICIPANT_CONFIG, domain)
+participant = Adapter(PARTICIPANT_CONFIG, domain)
 participant.initialize(V, coupling_boundary)
 dt = participant.dt
 
@@ -116,9 +124,7 @@ gamma = dfx.fem.Constant(domain, GAMMA_)
 
 dx = ufl.Measure("dx", domain=domain)
 
-a = (1 / (beta * dt**2)) * (u - u_old - dt * v_old) - (
-    (1 - 2 * beta) / (2 * beta)
-) * a_old
+a = (1 / (beta * dt**2)) * (u - u_old - dt * v_old) - ((1 - 2 * beta) / (2 * beta)) * a_old
 a_expr = dfx.fem.Expression(a, V.element.interpolation_points())
 
 v = v_old + dt * ((1 - gamma) * a_old + gamma * a)
@@ -146,7 +152,16 @@ L_form = ufl.rhs(Residual_du)
 
 
 problem = DiscreteLinearProblem(
-    a=a_form, L=L_form, u=u, bcs=bcs, point_dofs=participant.interface_dof
+    a=a_form,
+    L=L_form,
+    u=u,
+    bcs=bcs,
+    point_dofs=participant.interface_dof,
+    petsc_options={
+        "ksp_type": "cg",  # Tipo de solver
+        "pc_type": "hypre",  # Precondicionador
+        "ksp_rtol": 1e-8,  # Tolerancia de convergencia
+    },
 )
 
 

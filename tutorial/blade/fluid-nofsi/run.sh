@@ -1,0 +1,24 @@
+#!/bin/bash
+module load preCICE_OpenFOAM
+. $FOAM_BASH
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+./clean.sh
+touch fluid.foam
+
+#-------------#
+#   Meshing   #
+#-------------#
+runApplication -o blockMesh
+runApplication -o surfaceFeatureExtract
+runApplication -o snappyHexMesh -overwrite
+runApplication -o renumberMesh -noFields -overwrite
+runApplication -o checkMesh
+
+# ------------#
+#   Running   #
+# ------------#
+
+restore0Dir
+runApplication -o $(getApplication)
+find . -type d -regex '.*/[0-9]+\.[0-9]+' ! -exec test -e "{}/cellDisplacement" \; -exec rm -rf {} +

@@ -5,11 +5,14 @@ name = "pypi"
 
 [packages]
 pyprecice = "*"
-fenicsxprecice = {path = "./fenics-adapter", editable = true}
 gmsh = "*"
+fenicsxprecice = {file = "fenics-adapter", editable=true}
 
 [dev-packages]
 ipython = "*"
+gprof2dot = "*"
+line_profiler = "*"
+snakeviz = "*"
 
 [requires]
 python_version = "3.11"

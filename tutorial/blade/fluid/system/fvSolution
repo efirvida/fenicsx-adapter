@@ -1,0 +1,114 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    p
+    {
+        solver           PCG;
+        preconditioner   DIC;
+        tolerance        1e-5;
+        relTol 	         1.0e-3;
+    }    
+
+    pcorr
+    {
+        $p;
+    }
+
+    pcorrFinal
+    {
+        $p;
+        relTol          0;
+    }
+
+
+    pFinal
+    {
+        $p;
+        relTol          0;
+    }
+    
+    Phi
+    {
+        $p;
+    }
+
+    "(U|k|omega|epsilon|nuTilda|cellDisplacement)"
+    {
+        solver          smoothSolver;
+        smoother        GaussSeidel;
+        nSweeps         2;
+        tolerance       1e-05;
+        relTol          0.1;
+    }
+    
+    "(U|k|omega|epsilon|nuTilda|cellDisplacement)Final"
+    {
+        $U;
+        relTol          0;
+    }
+
+}
+
+potentialFlow
+{
+    nNonOrthogonalCorrectors 30;
+}
+
+
+PIMPLE
+{   
+    momentumPredictor              yes;
+    correctPhi                     yes;
+    turbOnFinalIterOnly             no;
+    nCorrectors                      1;
+    nOuterCorrectors                50;
+    nNonOrthogonalCorrectors         1;
+
+    outerCorrectorResidualControl
+    {
+        U
+        {
+            relTol          0;
+            tolerance       0.0001;
+        }
+        p
+        {
+            relTol          0;
+            tolerance       0.0001;
+        }
+    }
+
+}
+
+relaxationFactors
+{
+    fields
+    {
+        p                        0.3;
+    }
+    equations
+    {
+        U                              0.7;
+        "(k|omega|epsilon|nuTilda)"    0.7;
+    }
+}
+
+cache
+{
+    grad(U);
+}
+

@@ -1,0 +1,31 @@
+        functionObjectLibs ("libAcoustics.so");
+        
+        log             true;
+        
+        probeFrequency  1;
+        
+        timeStart       0;
+        
+        timeEnd         200;
+        
+        writeFft        true;
+        
+        c0              343;
+        
+        pName           p;
+
+        pInf            0;//for pisoFoam
+        
+        rhoName         rho;
+        
+        rho             rhoInf;
+        
+        rhoInf          1;
+        
+        CofR            (0 0 0);
+        
+        observers
+        {
+            #include        "observers";
+        }
+

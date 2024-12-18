@@ -1,0 +1,17 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+// https://www.researchgate.net/publication/261880295_CFD_simulation_of_the_NREL_phase_VI_rotor
+flowVelocity         ( 10 0 0); // 10 [m/s]
+rad_s               7.53982236; // 72 [rpm]
+turbulentNuTilda       1.85e-4;
+turbulentK              0.4537;
+turbulentEpsilon       0.02750;
+turbulentOmega           0.673;
+pressure                     0;
+
+// ************************************************************************* //

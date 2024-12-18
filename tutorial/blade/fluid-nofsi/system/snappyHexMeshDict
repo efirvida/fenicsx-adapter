@@ -1,0 +1,116 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  7
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#includeEtc "caseDicts/mesh/generation/snappyHexMeshDict.cfg"
+
+castellatedMesh        on;
+snap                   on;
+addLayers              on;
+
+geometry
+{
+    blade
+    {
+        type        triSurfaceMesh;
+        file        "blade.stl";
+    }   
+	box
+	{
+	    type            searchableBox;
+	    min             (-3 -3 0.0);
+	    max             ( 3  3 7);
+	}
+};
+
+
+// Settings for the castellatedMesh generation.
+castellatedMeshControls
+{
+    maxLocalCells              100000;
+    maxGlobalCells           20000000;
+    minRefinementCells              0;
+    maxLoadUnbalance             0.05;
+    nCellsBetweenLevels             3;
+    features
+    (
+        {
+            file        "blade.eMesh";
+            level                   3;
+        }
+    );
+
+    refinementSurfaces
+    {
+        blade
+        {
+            level                    (3 3);
+        }
+    }
+
+    refinementRegions
+    {
+        blade
+        {
+            mode        distance;
+            levels      (
+                            (0.1 5)
+                        );
+        }
+        
+        box
+        {
+            mode        inside;
+            levels       ((1e15 3));
+        }
+    }
+
+    resolveFeatureAngle              150;
+    locationInMesh               (1 1 1);
+    allowFreeStandingZoneFaces     false;
+}
+
+
+
+
+// Settings for the snapping.
+snapControls
+{
+    implicitFeatureSnap       off;
+    explicitFeatureSnap       on;
+    multiRegionFeatureSnap    on;
+}
+
+
+// Settings for the layer addition.
+addLayersControls
+{
+    layers
+    {
+        blade
+        {
+            nSurfaceLayers                       15;
+        }
+    }
+    relativeSizes                                on;
+    expansionRatio                             1.05;
+    thickness                                     1;
+    minThickness                                0.1;
+    featureAngle                                160;
+}
+
+mergeTolerance 1e-6;
+
+// ************************************************************************* //

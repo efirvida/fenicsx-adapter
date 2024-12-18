@@ -1,0 +1,105 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+
+xmin  -5;
+xmax   15;
+
+ymin  -5;
+ymax   5;
+
+zmin   0;
+zmax  10;
+
+
+vertices
+(
+    ($xmax $ymax $zmin )         // 0
+    ($xmin $ymax $zmin )         // 1
+    ($xmin $ymin $zmin )         // 2
+    ($xmax $ymin $zmin )         // 3
+    ($xmax $ymax $zmax )         // 4
+    ($xmin $ymax $zmax )         // 5
+    ($xmin $ymin $zmax )         // 6
+    ($xmax $ymin $zmax )         // 7
+);
+
+blocks
+(
+    hex (   0   1   2   3   4  5  6  7  )
+    (60 30 30)
+    simpleGrading (1 1 1)
+);
+
+// edges (
+//     arc 1 2 ($ymin 0 $zmin)
+//     arc 5 6 ($ymin 0 $zmax)
+// );
+
+
+boundary
+(
+
+    inlet
+    {
+        type patch;
+        faces
+        (
+            (1 2 5 6)
+        );
+    }    
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (3 0 4 7)
+        );
+    }    
+    floor
+    {
+        type symmetryPlane;
+        faces
+        (
+            (0 1 2 3)
+        );
+    }
+    externalDomain_1
+    {
+        type symmetryPlane;
+        faces
+        (
+            (0 1 4 5)
+        );
+    }
+    externalDomain_2
+    {
+        type symmetryPlane;
+        faces
+        (
+            (2 3 6 7)
+        );
+    }
+    externalDomain_3
+    {
+        type symmetryPlane;
+        faces
+        (
+            (4 5 6 7)
+        );
+    }    
+
+);
